@@ -1,0 +1,26 @@
+# Dependencies & build output (images install/build inside Docker)
+node_modules
+**/node_modules
+dist
+**/.next
+.next
+out
+coverage
+
+# Secrets & local env (never bake into images)
+.env
+.env.*
+!.env.example
+
+# Git & editor
+.git
+.gitignore
+*.md
+.vscode
+.idea
+
+# OS / logs
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*

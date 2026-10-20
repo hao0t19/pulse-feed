@@ -1,0 +1,91 @@
+name: pulsefeed
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: pulsefeed-mongodb
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-pulsefeed}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-pulsefeed}
+      MONGO_APP_USER: ${MONGO_APP_USER:-pulse_app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-pulse_app_secret}
+    volumes:
+      - mongodata:/data/db
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "-u",
+          "root",
+          "-p",
+          "pulsefeed",
+          "--authenticationDatabase",
+          "admin",
+          "--eval",
+          "db.adminCommand('ping')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  api:
+    build: ./api
+    container_name: pulsefeed-api
+    ports:
+      - "${API_PORT:-8081}:8081"
+    environment:
+      HTTP_PORT: 8081
+      MONGODB_URI: mongodb://${MONGO_APP_USER:-pulse_app}:${MONGO_APP_PASSWORD:-pulse_app_secret}@mongodb:27017/${MONGO_DB:-pulsefeed}?authSource=${MONGO_DB:-pulsefeed}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8081/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:8081}
+    container_name: pulsefeed-frontend
+    ports:
+      - "${UI_PORT:-3001}:3001"
+    environment:
+      PORT: 3001
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  mongodata:
