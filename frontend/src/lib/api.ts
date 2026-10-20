@@ -30,7 +30,7 @@ export type SummaryResponse = {
   topAuthors: { authorId: string; authorName: string; count: number }[];
 };
 
-const DEMO_USER = { id: 'u-demo', name: 'Demo User' };
+export const DEMO_USER = { id: 'u-demo', name: 'Demo User' };
 
 export async function fetchPosts(params: Record<string, string>): Promise<{
   items: PostItem[];
@@ -74,14 +74,20 @@ export async function createPost(input: {
   if (!res.ok) throw new Error(`create post ${res.status}`);
 }
 
-export async function likePost(postId: string): Promise<void> {
+export type LikeResult =
+  | { status: 'liked'; reactionCounts: PostItem['reactionCounts'] }
+  | { status: 'already-liked' };
+
+export async function likePost(postId: string): Promise<LikeResult> {
   const res = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: DEMO_USER.id }),
   });
-  if (res.status === 409) return;
+  if (res.status === 409) return { status: 'already-liked' };
   if (!res.ok) throw new Error(`like ${res.status}`);
+  const data = (await res.json()) as { reactionCounts: PostItem['reactionCounts'] };
+  return { status: 'liked', reactionCounts: data.reactionCounts };
 }
 
 export async function addComment(postId: string, body: string): Promise<void> {
