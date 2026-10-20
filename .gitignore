@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+
+# Local secrets — commit only .env.example (dev defaults, not production secrets)
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
